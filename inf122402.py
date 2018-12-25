@@ -4,6 +4,7 @@ from numpy import *
 from pylab import *
 from ipywidgets import *
 import scipy.io.wavfile as wav
+import soundfile as sf
 import scipy.signal as s
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import stem
@@ -13,8 +14,8 @@ def cut(w, signal):
     if mid <= 0.5:
         return signal
     else:
-        start = len(signal)/2.0 - w/2.0
-        end = start + w
+        end = len(signal)/2.0 + w/2.0
+        start = end - w
         out = []
         for i in range(0,len(signal)):
             if i > start and i <= end:
@@ -23,23 +24,32 @@ def cut(w, signal):
 
 if __name__ == "__main__":
     w, signal = wav.read(sys.argv[1])
-    signal = signal[:,0]/2.0 + signal[:,1]/2.0
-    signal = signal / max(signal)
-    signal = cut(w, signal)  
-    
-    window = s.hann(len(signal)/2)
-    zeros = zeros(len(signal)/2)
-    fun = hstack([window,zeros])
-    signal = signal*fun
-    spectrum = abs(fft(signal))
-    hps = copy(spectrum)
+    channel = 1
+    if type(signal[0]) in (tuple, list, np.ndarray):
+        signal = signal[:,0]/2.0 + signal[:,1]/2.0
+        channel = 2
+    signal = cut(w, signal)
+    count = len(signal)  
 
-    for i in range(2, 7):
+    window = s.kaiser(count, 100)
+    signal = signal * window
+    spectrum = np.log(abs(np.fft.rfft(signal)))
+    spectrum2 = copy(spectrum)
+
+    for i in range(2,7):
         dec = s.decimate(spectrum, i)
-        hps[:len(dec)] += dec
-    peak = np.argmax(hps[50:])
-    fundamental = 50 + peak
-    print(fundamental)
-    fig = plt.figure(figsize=(15, 6), dpi=80)
-    plt.plot(signal, linestyle='-', color='red')
-    plt.show()
+        spectrum2[:len(dec)] += dec
+
+    peak_start = 50
+    peak = np.argmax(spectrum2[peak_start:])
+    frequency = peak_start + peak 
+    #print(frequency)
+
+    if frequency > 170:
+        print('K')
+    else:
+        print('M')
+
+    #fig = plt.figure(figsize=(15, 6), dpi=80)
+    #plt.plot(spectrum, 'o')
+    #plt.show()
