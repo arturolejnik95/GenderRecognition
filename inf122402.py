@@ -7,7 +7,13 @@ import scipy.io.wavfile as wav
 import soundfile as sf
 import scipy.signal as s
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.pyplot import stem
+
+def parabolic(f, x):
+    xv = 0.5 * (f[x-1]-f[x+1]) / (f[x-1] - 2*f[x] + f[x+1]) + x
+    yv = f[x] - 0.25 * (f[x-1] - f[x+1]) * (xv - x)
+    return (xv, yv)
 
 def cut(w, signal):
     mid = (len(signal)/w)/2.0
@@ -26,23 +32,25 @@ if __name__ == "__main__":
     w, signal = wav.read(sys.argv[1])
     channel = 1
     if type(signal[0]) in (tuple, list, np.ndarray):
-        signal = signal[:,0]/2.0 + signal[:,1]/2.0
+        signal = signal[:,0]/2.0 + signal[:,1]/2.0 #Pozbycie sie drugiego kanalu
         channel = 2
     signal = cut(w, signal)
     count = len(signal)  
 
-    window = s.kaiser(count, 100)
+    window = s.kaiser(len(signal), 100) #Okno
     signal = signal * window
-    spectrum = np.log(abs(np.fft.rfft(signal)))
-    spectrum2 = copy(spectrum)
+    spectrum = log(abs(np.fft.rfft(signal))) #FFT
+    hps = copy(spectrum)
 
     for i in range(2,7):
-        dec = s.decimate(spectrum, i)
-        spectrum2[:len(dec)] += dec
+        dec = s.decimate(spectrum, i) #Decimate
+        hps[:len(dec)] += dec
 
     peak_start = 50
-    peak = np.argmax(spectrum2[peak_start:])
-    frequency = peak_start + peak 
+    hps2 = hps[peak_start:]
+    i_peak = argmax(hps2[:len(dec)])
+    peak = parabolic(hps2, i_peak)[0]
+    frequency = i_peak + peak_start #Czestotliwosc 
     #print(frequency)
 
     if frequency > 170:
